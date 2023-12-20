@@ -1,21 +1,9 @@
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Paper,
-  Box,
-  Button,
-  FormControlLabel,
-  Checkbox,
-  Icon,
-  IconButton,
-  Avatar,
-} from "@mui/material";
+import { Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Box, Button, FormControlLabel, Checkbox, Icon, IconButton, Avatar } from "@mui/material";
 import { ICalendar, IEvent, getCalendarsEndpoint, getEventsEndpoint } from "../backend";
-import { useEffect, useState } from "react";
+import { useCallback, useContext, useEffect, useMemo, useReducer } from "react";
+import { authContext } from "../authContext";
+import React from "react";
+import { reducer } from "./calendarScreenReducer";
 // import { styled } from "@mui/material/styles";
 
 type IEventWithCalendar = IEvent & { calendar: ICalendar };
@@ -90,45 +78,63 @@ const days_of_week = ["DOM", "SEG", "TER", "QUA", "QUI", "SEX", "SÁB"];
 //   },
 // }));
 
-export default function Calendar() {
-  const [events, setEvents] = useState<IEvent[]>([]);
-  const [calendars, setCalendars] = useState<ICalendar[]>([]);
-  const [calendarsSelected, setCalendarsSelected] = useState<boolean[]>([]);
+export const Calendar = React.memo(function () {
+  const month = getToday();
 
-  const weeks = generateCalendar(getToday(), events, calendars, calendarsSelected);
+  const [state, dispatch] = useReducer(reducer, {
+    calendars: [],
+    calendarsSelected: [],
+    events: [],
+  });
+
+  // Get var from useReducer state
+  const { events, calendars, calendarsSelected } = state;
+
+  // const [calendars, setCalendars] = useState<ICalendar[]>([]);
+  // const [calendarsSelected, setCalendarsSelected] = useState<boolean[]>([]);
+  // const [events, setEvents] = useState<IEvent[]>([]);
+
+  const { user } = useContext(authContext);
+
+  const weeks = useMemo(() => {
+    return generateCalendar(getToday(), events, calendars, calendarsSelected);
+  }, [month, events, calendars, calendarsSelected]);
+
   const firstDate = weeks[0][0].date;
   const lastDate = weeks[weeks.length - 1][6].date;
 
   useEffect(() => {
     Promise.all([getCalendarsEndpoint(), getEventsEndpoint(firstDate, lastDate)]).then(([calendars, events]) => {
-      setCalendarsSelected(calendars.map(() => true));
-      setCalendars(calendars);
-      setEvents(events);
+      dispatch({ type: "load", payload: { events, calendars } });
     });
   }, [firstDate, lastDate]);
 
-  function toggleCalendar(index: number) {
-    const newValue = [...calendarsSelected];
-    newValue[index] = !newValue[index];
-    setCalendarsSelected(newValue);
-  }
+  const toggleCalendar = useCallback(
+    (index: number) => {
+      dispatch({ type: "toggleCalendar", payload: index });
+      // Before use reducer
+      // const newValue = [...calendarsSelected];
+      // newValue[index] = !newValue[index];
+      // setCalendarsSelected(newValue);
+    },
+    [calendarsSelected]
+  );
 
   return (
     <Box display="flex" alignItems="stretch" height="100%">
       <Box width="16em" padding="0.8rem 1rem">
         <h2>Projeto Agenda</h2>
+
         <Button variant="contained" color="primary">
           Novo evento
         </Button>
 
+        <span>{user.name}</span>
+
         <Box marginTop="64px">
           <h3>Agendas</h3>
           {calendars.map((calendar, i) => (
-            <FormControlLabel
-              control={<Checkbox style={{ color: calendar.color }} checked={calendarsSelected[i]} onChange={() => toggleCalendar(i)} />}
-              label={calendar.name}
-              key={calendar.id}
-            />
+            <FormControlLabel control={<Checkbox style={{ color: calendar.color }} checked={calendarsSelected[i]} onChange={() => toggleCalendar(i)} />} label={calendar.name} key={calendar.id} />
           ))}
         </Box>
       </Box>
@@ -196,4 +202,4 @@ export default function Calendar() {
       </Box>
     </Box>
   );
-}
+});

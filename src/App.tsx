@@ -1,7 +1,10 @@
+import { Provider } from "react-redux";
 import "./App.css";
+import { authContext } from "./authContext";
 // import { getEventsEndpoint } from "./backend";
-import Calendar from "./components/Calendar";
+import { Calendar } from "./components/Calendar";
 import { BrowserRouter as Router, Route, Routes } from "react-router-dom";
+import { store } from "./store/tictactoeStore";
 
 function App() {
   // getEventsEndpoint().then((events) => {
@@ -10,14 +13,22 @@ function App() {
   //   }
   // });
 
+  const user = { name: "nome", email: "email" };
+
+  function onSignOut() {}
+
   return (
-    <Router>
-      <Routes>
-        <Route path="/calendar">
-          <Calendar />
-        </Route>
-      </Routes>
-    </Router>
+    <Provider store={store}>
+      <authContext.Provider value={{ user, onSignOut }}>
+        <Router>
+          <Routes>
+            <Route path="/calendar">
+              <Calendar />
+            </Route>
+          </Routes>
+        </Router>
+      </authContext.Provider>
+    </Provider>
   );
 }
 
